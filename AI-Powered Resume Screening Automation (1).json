@@ -1,0 +1,645 @@
+{
+  "name": "AI-Powered Resume Screening Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "1U6jyBDlO7R6aotGSXCYdHUPLLMIpiIMp",
+          "mode": "list",
+          "cachedResultName": "Resume uploads",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1U6jyBDlO7R6aotGSXCYdHUPLLMIpiIMp"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "7d8ad425-8b18-4b8a-8203-bdd8b192c1bb",
+      "name": "Resume Upload Trigger",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "XrpZ7PysfEjFztms",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        208,
+        0
+      ],
+      "id": "edf5d446-6ce5-4377-8f65-820fa0823d7d",
+      "name": "Download Uploaded Resume",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "XrpZ7PysfEjFztms",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        368,
+        16
+      ],
+      "id": "7db8e112-299c-4dd9-bba4-3e922bb1c567",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ff5d6e82-164b-4804-9357-8daa9bbf826e",
+              "name": "job_description",
+              "value": "Looking for Python developer with Django, REST API, SQL knowledge.",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        576,
+        16
+      ],
+      "id": "5bafb7ec-7bd7-4a0d-aacb-bc6f6d4ca320",
+      "name": "Job Description"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "key",
+              "value": "AIzaSyDFXMPXJkoCBH7xrqpWhZk8vejC_GjPqQM"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "JSON",
+        "body": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"You are an HR assistant.\\n\\nExtract the candidate's full name and email address from the resume.\\nCompare the resume with the job description and give a relevance score out of 100.\\n\\nResume:\\n{{$json.text}}\\n\\nJob Description:\\n{{$json.job_description}}\\n\\nReturn ONLY plain JSON in this exact format:\\n{\\n  \\\"name\\\": \\\"\\\",\\n  \\\"email\\\": \\\"\\\",\\n  \\\"score\\\": number\\n}\\n\\nIMPORTANT:\\n- Do NOT add explanation.\\n- Do NOT add markdown.\\n- Do NOT wrap response in ```json.\\n- Return only valid JSON.\"\n        }\n      ]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        784,
+        16
+      ],
+      "id": "5eebfcd5-a56e-469d-a723-0ad3f292e24f",
+      "name": "Connect With Gemini Model"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3123defe-91c7-422a-8ba3-438cc852ad68",
+              "name": "Score",
+              "value": "={{ Number(JSON.parse($json.candidates[0].content.parts[0].text).score) }}",
+              "type": "number"
+            },
+            {
+              "id": "86e190e0-e0d4-476f-96f8-a8b09c83b6ac",
+              "name": "Name",
+              "value": "={{ JSON.parse($json.candidates[0].content.parts[0].text).name }}",
+              "type": "string"
+            },
+            {
+              "id": "ecfd3705-08c0-4e7c-975f-0e712426e50b",
+              "name": "Email",
+              "value": "={{ JSON.parse($json.candidates[0].content.parts[0].text).email }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        992,
+        16
+      ],
+      "id": "e979fbaf-a1cf-4bcf-a790-546d17d3864b",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c9cd28f6-189c-43fc-9a41-bbe3da7fbd46",
+              "leftValue": "={{ $json.Score }}",
+              "rightValue": "=75",
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1200,
+        16
+      ],
+      "id": "b074c1b1-f1c9-4cd3-b99a-84377527bbd9",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1_inXbNEdvzeWr4dIVMiArYTyQGatxKWhpeGdwUxTJVc",
+          "mode": "list",
+          "cachedResultName": "AI Resume Screening Results",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1_inXbNEdvzeWr4dIVMiArYTyQGatxKWhpeGdwUxTJVc/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1_inXbNEdvzeWr4dIVMiArYTyQGatxKWhpeGdwUxTJVc/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{ $json.Name }}",
+            "Email": "={{ $json.Email }}",
+            "Score": "={{ $json.Score }}",
+            "Status": "Shortlisted"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Score",
+              "displayName": "Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1440,
+        -96
+      ],
+      "id": "88c74319-658b-4403-a17a-6b43e4286648",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "aWhTCBz99PZbdBfb",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1_inXbNEdvzeWr4dIVMiArYTyQGatxKWhpeGdwUxTJVc",
+          "mode": "list",
+          "cachedResultName": "AI Resume Screening Results",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1_inXbNEdvzeWr4dIVMiArYTyQGatxKWhpeGdwUxTJVc/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1_inXbNEdvzeWr4dIVMiArYTyQGatxKWhpeGdwUxTJVc/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{ $json.Name }}",
+            "Email": "={{ $json.Email }}",
+            "Score": "={{ $json.Score }}",
+            "Status": "Rejected"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Score",
+              "displayName": "Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1440,
+        112
+      ],
+      "id": "e8e90e27-9487-496e-b35f-bc43319e17b0",
+      "name": "Append row in sheet1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "aWhTCBz99PZbdBfb",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "move",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $('Download Uploaded Resume').item.json.id }}",
+          "mode": "id"
+        },
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "18syDZole1WHiluoxBTPYA1WS8cvxqbq_",
+          "mode": "list",
+          "cachedResultName": "Shortlisted Candidates",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/18syDZole1WHiluoxBTPYA1WS8cvxqbq_"
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1648,
+        -96
+      ],
+      "id": "660a87b1-eb8e-4b6f-8fd7-9598615dd54f",
+      "name": "Move file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "XrpZ7PysfEjFztms",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "move",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $('Download Uploaded Resume').item.json.id }}",
+          "mode": "id"
+        },
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1pBWfkO8iQ_50wiWt0yL5BASGme1HjrEA",
+          "mode": "list",
+          "cachedResultName": "Rejected Candidates",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1pBWfkO8iQ_50wiWt0yL5BASGme1HjrEA"
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1648,
+        112
+      ],
+      "id": "ed1ac6bc-bc96-46a4-885e-c084655e2231",
+      "name": "Move file1",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "XrpZ7PysfEjFztms",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Edit Fields').item.json.Email }}",
+        "subject": "Application Status Update",
+        "message": "=<p>Dear {{ $('Edit Fields').item.json.Name }},</p>\n\n<p>Thank you for your interest in the position and for submitting your resume for our review.</p>\n\n<p>We are pleased to inform you that your profile has been shortlisted for the next stage of our selection process.</p>\n\n<p><strong>Resume Evaluation Score:</strong> {{ $('Edit Fields').item.json.Score }}/100</p>\n\n<p>Your qualifications and experience align well with our current requirements. Our team will contact you shortly with further details regarding the next steps in the hiring process.</p>\n\n<p>We appreciate the time and effort you invested in your application and look forward to speaking with you soon.</p>\n\n<p>Kind regards,<br>\nHR Team</p>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1856,
+        -96
+      ],
+      "id": "8d2514ca-dbc2-4dd8-af13-1dd7c148ff58",
+      "name": "Shortlisted",
+      "webhookId": "e1c6a1d0-98a2-4973-96ef-e217336b4442",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "jyr22yoLGUfxeasB",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Edit Fields').item.json.Email }}",
+        "subject": "Application Status Update",
+        "message": "=<p>Dear {{ $('Edit Fields').item.json.Name }},</p>\n\n<p>Thank you for taking the time to apply and for sharing your resume with us.</p>\n\n<p>After careful consideration, we regret to inform you that your application has not been selected to proceed to the next stage of the hiring process at this time.</p>\n\n<p><strong>Resume Evaluation Score:</strong> {{ $('Edit Fields').item.json.Score }}/100</p>\n\n<p>This decision was not an easy one, as we received many qualified applications. We sincerely appreciate your interest in our organization and the effort you put into your application.</p>\n\n<p>We encourage you to apply again in the future should a suitable opportunity arise.</p>\n\n<p>We wish you every success in your continued professional journey.</p>\n\n<p>Kind regards,<br>\nHR Team</p>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1856,
+        112
+      ],
+      "id": "b595c4a4-a725-420b-9384-1a4c9b92e285",
+      "name": "Rejected",
+      "webhookId": "28c846ab-a18c-4c5d-a701-26652f97d688",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "jyr22yoLGUfxeasB",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Resume Upload Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download Uploaded Resume",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Uploaded Resume": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Job Description",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Job Description": {
+      "main": [
+        [
+          {
+            "node": "Connect With Gemini Model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Connect With Gemini Model": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Append row in sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Move file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet1": {
+      "main": [
+        [
+          {
+            "node": "Move file1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Move file": {
+      "main": [
+        [
+          {
+            "node": "Shortlisted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Move file1": {
+      "main": [
+        [
+          {
+            "node": "Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "executionTimeout": -1
+  },
+  "versionId": "682fa9dc-b328-4b23-8e42-894e2d5592db",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b27cccb1cd62246ba9e179a75c1f59b04f06374005759589356f6deb21b8664a"
+  },
+  "id": "UMZbslX4feQ_djVnCTSQA",
+  "tags": []
+}
